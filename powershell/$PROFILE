@@ -1,3 +1,10 @@
+Import-Module -Name Terminal-Icons
+# Create an Alias TF to Terraform
+New-Alias -Name tf -Value "$HOME\AppData\Local\Microsoft\WindowsApps\terraform.exe"
+
+# Create an allias to Gemini CLI
+New-Alias -Name 'g' -Value 'gemini'
+
 # ---- Terraform commands ----
 # Assumption are 
 # - tfvars file is in a configs/ folder

@@ -1,0 +1,69 @@
+# ---- Terraform commands ----
+# Assumption are 
+# - tfvars file is in a configs/ folder
+# - tfstate file is saved to a states/ sub-folder  
+ function tf {
+     param([string]$Action, [string]$Env)
+     $vf = "configs/$Env.tfvars"
+     $st = "states/$Env.tfstate"
+     switch ($Action) {
+         "apply"   { terraform apply --auto-approve "-var-file=$vf" "-state=$st" }
+         "plan"    { terraform plan "-var-file=$vf" "-state=$st" }
+         "destroy" { terraform destroy --auto-approve "-var-file=$vf" "-state=$st" }
+         default   { Write-Host "Usage: tf <apply|plan|destroy> <env>" }
+     }
+ }
+
+ function Get-Youtube {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true)]
+    [string[]]$Url
+  ) 
+
+  begin {
+    # adjust these paths if yt-dlp.exe / ffmpeg are elsewhere
+    $ytExe = 'C:\Tools\yt-dlp.exe'
+    $ffmpegExe = 'C:\Tools\ffmpeg\bin\ffmpeg.exe'
+    $outTemplate = Join-Path $HOME 'Video\YouTube\%(uploader)s%(title)s.%(ext)s'
+
+  } 
+
+  process {
+    foreach ($u in $Url) {
+      & $ytExe -f 'bestvideo+bestaudio' `
+        --ffmpeg-location $ffmpegExe --embed-chapters `
+        --add-metadata --embed-thumbnail `
+        --sponsorblock-remove 'all' -o $outTemplate `
+        --write-description --write-info-json `
+        $u
+    }
+  }
+} 
+
+# History exclusion list — add strings that should never be written to the history file
+$HistoryExclusionList = @(
+    'password',
+    'secret',
+    'token',
+    'API'
+)
+
+Set-PSReadLineOption -AddToHistoryHandler {
+    param([string]$command)
+
+    # Single leading space: skip entirely (not even in-memory history)
+    if ($command.Length -gt 0 -and $command[0] -eq ' ' -and ($command.Length -lt 2 -or $command[1] -ne ' ')) {
+        return [Microsoft.PowerShell.AddToHistoryOption]::SkipAdding
+    }
+
+    # Exclusion list match: keep in session memory, don't write to file
+    if ($HistoryExclusionList.Count -gt 0) {
+        $pattern = ($HistoryExclusionList | ForEach-Object { [regex]::Escape($_) }) -join '|'
+        if ($command -match $pattern) {
+            return [Microsoft.PowerShell.AddToHistoryOption]::MemoryOnly
+        }
+    }
+
+    return [Microsoft.PowerShell.AddToHistoryOption]::MemoryAndFile
+}
